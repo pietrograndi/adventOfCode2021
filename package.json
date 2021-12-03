@@ -1,0 +1,26 @@
+{
+  "name": "adventOfCode21",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node-dev --respawn ./src/day03/day03.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^16.11.11",
+    "fp-ts": "^2.11.5",
+    "io-ts": "^2.2.16",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.2"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.5.0",
+    "@typescript-eslint/parser": "^5.5.0",
+    "eslint": "^8.3.0",
+    "prettier": "2.5.0",
+    "ts-node-dev": "^1.1.8"
+  }
+}
