@@ -8,7 +8,19 @@ fs.readFile('./src/day04/input.txt', 'utf8', (err: Error, data: string) => {
   const splitted = data.split(/r?\n/)
   const balls = getBalls(splitted)
   const boards = getBoards(splitted)
-  estrazione(balls, boards)
+  const part1 = estrazione(balls, boards)
+  const total =
+    finalePart1(part1.winningBoards) *
+    part1.winningBalls[part1.winningBalls.length - 1]
+  console.log('TOTAL PART 1', total)
+  console.log('----------')
+  const part2 = estrazione(balls, boards, true)
+  const lastWinningBoard = [part2.winningBoards[part2.winningBoards.length - 1]]
+  const totalPart2 = finalePart1(lastWinningBoard)
+  console.log(
+    'TOTAL PART 2',
+    totalPart2 * part2.winningBalls[part2.winningBalls.length - 1]
+  )
 })
 
 const getBalls = (input: string[]): number[] => {
@@ -16,13 +28,14 @@ const getBalls = (input: string[]): number[] => {
 }
 
 const getBoards = (input: string[]): number[][][] => {
-  const b = buildBoards(input).map((board) => {
-    return board.map(splitBoard)
-  })
-  const newBoards = b.reduce((acc: number[][][], board) => {
-    return [...acc, fromColToRow({ board, newRows: [] }).newRows]
-  }, [])
-  return [...newBoards, ...b]
+  return buildBoards(input)
+    .map((board) => {
+      return board.map(splitBoard)
+    })
+    .reduce((acc: number[][][], board) => {
+      const { rows, cols } = fromRowsToCols({ rows: board, cols: [] })
+      return [...acc, [...rows, ...cols]]
+    }, [])
 }
 
 const splitBoard = (input: string): number[] => {
@@ -47,22 +60,22 @@ const buildBoards = (input: string[]): string[][] => {
 }
 
 interface ColToRowInterface {
-  board: number[][]
-  newRows: number[][]
+  rows: number[][]
+  cols: number[][]
 }
 
-const fromColToRow = ({
-  board,
-  newRows,
+const fromRowsToCols = ({
+  rows,
+  cols,
 }: ColToRowInterface): ColToRowInterface => {
-  if (newRows.length === 5) return { board, newRows }
-  const position = newRows.length
-  const col = board.reduce((acc, item: number[]) => {
+  if (cols.length === 5) return { rows, cols }
+  const position = cols.length
+  const col = rows.reduce((acc, item: number[]) => {
     return [...acc, item[position]]
   }, [])
-  return fromColToRow({
-    board,
-    newRows: [...newRows, col],
+  return fromRowsToCols({
+    rows,
+    cols: [...cols, col],
   })
 }
 
@@ -76,35 +89,59 @@ const markRow = (ball: number) => (row: number[]) => {
         ...row.slice(position + 1, row.length),
       ]
 }
-
-const estrazione = (balls: number[], boards: number[][][]) => {
-  const b = balls.reduce(
+const estrazione = (
+  balls: number[],
+  boards: number[][][],
+  part2 = false
+): {
+  winningBalls: number[]
+  winningBoards: unknown[][][]
+  boards: number[][][]
+} => {
+  return balls.reduce(
     (acc, ball) => {
-      if (acc.winIndex !== -1) return acc
+      if (acc.winningBoards.length > 0 && !part2) return acc
+      const bp = boardProcess(acc.boards, ball, part2)
+
+      const isWinning = bp.winningIndex.length > 0
+      const winningBoards: unknown[] = bp.winningIndex.map((i) => bp.boards[i])
+      const boards = bp.boards.filter(
+        (item, index) => !bp.winningIndex.includes(index)
+      )
       return {
-        ...boardProcess(acc.boards, ball),
-        lastNumber: ball,
+        winningBoards: isWinning
+          ? [...acc.winningBoards, winningBoards]
+          : acc.winningBoards,
+        boards,
+        winningBalls: isWinning
+          ? [...acc.winningBalls, ball]
+          : acc.winningBalls,
       }
     },
-    { boards, winIndex: -1, lastNumber: -1, winRowIndex: -1 }
+    { boards, winningBalls: [], winningBoards: [] }
   )
-  const cleaned = cleanWinner(b.boards[b.winIndex], b.winRowIndex)
-  console.log('total part 1', cleaned * b.lastNumber)
 }
 
-const boardProcess = (boards: number[][][], ball: number) => {
+const boardProcess = (boards: number[][][], ball: number, part2 = false) => {
   return boards.reduce(
-    (acc, board, idx) => {
-      const newBoard = board.map(markRow(ball))
-      const winRowIndex = checkIsWinningBoard(newBoard)
-      const winIndex = winRowIndex !== -1 ? idx : -1
+    (acc, board, index) => {
+      const updatedBoard = board.map(markRow(ball))
+      const isWinning = checkIsWinningBoard(updatedBoard) !== -1
+      const alreadyWin = acc.winningIndex.length === 1
+
+      if (alreadyWin && !part2) return acc
+
       return {
-        winIndex: acc.winIndex !== -1 ? acc.winIndex : winIndex,
-        boards: [...acc.boards, newBoard],
-        winRowIndex: acc.winRowIndex !== -1 ? acc.winRowIndex : winRowIndex,
+        boards: [...acc.boards, updatedBoard],
+        winningIndex: isWinning
+          ? [...acc.winningIndex, index]
+          : acc.winningIndex,
       }
     },
-    { boards: [], winIndex: -1, winRowIndex: -1 }
+    {
+      boards: [],
+      winningIndex: [],
+    }
   )
 }
 
@@ -115,16 +152,19 @@ const checkIsWinningBoard = (board: (string | number)[][]): number => {
   return counter.indexOf(true)
 }
 
-const cleanWinner = (
-  board: (string | number)[][],
-  rowIndex: number
-): number => {
-  const b2 = board.filter((item, idx) => idx !== rowIndex)
+const cleanWinnerBoard = (board: unknown[]): number => {
   return pipe(
-    b2,
-    A.chain((x) => x),
+    board,
     A.map(t.number.decode),
     A.rights,
     A.reduce<number, number>(0, (a, b) => a + b)
   )
+}
+
+const finalePart1 = (winningBoards: unknown[][][]) => {
+  const data = winningBoards
+    .flatMap((x) => x)
+    .flatMap((x) => x)
+    .flatMap((x) => x)
+  return cleanWinnerBoard(data) / 2
 }
