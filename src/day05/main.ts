@@ -56,9 +56,7 @@ const getMaxSize = (input: [number, number][][]): [number, number] => {
 
 const createBoard = (size: [number, number]): number[][] => {
   const [x, y] = size
-  const cols = new Array(size[y])
-  const board = cols.map(() => new Array(x).fill(0))
-  return board
+  return new Array(y).fill(new Array(x).fill(0))
 }
 
 const getLines = (input: [number, number][][]) => {
