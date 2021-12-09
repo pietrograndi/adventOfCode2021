@@ -1,15 +1,6 @@
 import { pipe } from 'fp-ts/lib/function'
-import {
-  chain,
-  map,
-  rights,
-  flatten,
-  uniq,
-  reduce,
-  chunksOf,
-} from 'fp-ts/lib/Array'
+import { chain, map, rights, chunksOf } from 'fp-ts/lib/Array'
 import { Either, right, left } from 'fp-ts/lib/Either'
-import * as N from 'fp-ts/number'
 import { number, tuple } from 'io-ts'
 import { splitLines } from '../utils/utils'
 
@@ -40,21 +31,69 @@ const getPoint = (a: string) => {
 
 export const cleaningCoords = (
   input: [number, number][][]
-): [number, number][][] => {
-  return pipe(input, map(isStrightLine), rights, map(sortingLinePoints))
+): [number, number][] => {
+  return pipe(
+    input,
+    map(sortingLinePoints),
+    map(isStrightLine),
+    rights,
+    chain(getPointInterval)
+  )
 }
 
 const isStrightLine = (
-  x: [number, number][]
+  coord: [number, number][]
 ): Either<string, [number, number][]> => {
-  const isStright = pipe(x, flatten, uniq(N.Eq)).length !== 4
-  return isStright ? right(x) : left('')
+  const [start, end] = coord
+  const [x1, y1] = start
+  const [x2, y2] = end
+  if (x1 === x2 || y1 === y2) return right(coord)
+  const deltaY = y2 - y1
+  const deltaX = x2 - x1
+  if (Math.abs(deltaY / deltaX) === 1) return right(coord)
+  return left('')
 }
 
 const sortingLinePoints = (points: [number, number][]): [number, number][] => {
-  const [zero, one] = pipe(points, map(reduce(0, N.SemigroupSum.concat)))
-  if (zero < one) return points
-  return points.reverse()
+  const [start, end] = points
+  if (start[0] === end[0]) return [start, end].sort((a, b) => a[1] - b[1])
+  return [start, end].sort((a, b) => a[0] - b[0])
 }
 
-// ANCHOR
+const getPointInterval = (coord: [number, number][]) => {
+  const ca = Array.from(newRange(coord))
+  return ca
+}
+
+const newPoint2 = ([start, end]: [number, number][]): [number, number][] => {
+  const [x1, y1] = start
+  const [x2, y2] = end
+  if (x1 === x2 && y1 !== y2) {
+    return [[x1, y1 + 1], end]
+  }
+  if (y1 === y2 && x1 !== x2) {
+    return [[x1 + 1, y1], end]
+  }
+  const slope = getSlope([start, end])
+  return [[x1 + 1, y1 + slope], end]
+}
+
+const getSlope = ([start, end]: [number, number][]): number => {
+  const [x1, y1] = start
+  const [x2, y2] = end
+  return (y2 - y1) / (x2 - x1)
+}
+
+function* newRange([start, end]: [number, number][]) {
+  const [x1, y1] = start
+  const [x2, y2] = end
+  const xStep = Math.abs(x1 - x2)
+  let start_c: number = xStep !== 0 ? x1 : y1
+  const end_c = xStep !== 0 ? x2 : y2
+  let currentCoord: [number, number][] = [start, end]
+  while (start_c <= end_c) {
+    yield currentCoord[0]
+    currentCoord = newPoint2(currentCoord)
+    start_c++
+  }
+}
