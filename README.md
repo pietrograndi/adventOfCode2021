@@ -5,3 +5,5 @@
 - [x] 3rd December
 - [x] 4th December
 - [x] 5th December
+- [x] 6th December
+- [ ] 7th December

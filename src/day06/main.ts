@@ -7,9 +7,9 @@ readFile('./src/day06/input.txt', 'utf8', (err: Error, data: string) => {
   if (err) return
   console.log(data)
   const parsedData = data.split(',').map((n) => parseInt(n, 10))
-  const a = chunksOf(5)(parsedData) as number[][]
+  const a = chunksOf(1)(testList) as number[][]
   const totalone = a.reduce((acc, item, index) => {
-    const count = fishCounter(item, 80)
+    const count = fishCounter(item, 256)
     console.log('chunk ', index, 'fish', count)
     return count + acc
   }, 0)
